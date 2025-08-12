@@ -1,222 +1,309 @@
-import type { NextFunction, Request, Response } from "express";
-import { getOrderParam, getPageParam, getQParam, getUrlParam } from "@helpers/queryParams";
+import type { Context } from "hono";
+import { getOrderParam, getPageParam, getQParam, getUrlParam, generateHonoPayload } from "@helpers/honoHelpers";
 import SamehadakuParser from "@samehadaku/parsers/SamehadakuParser";
 import samehadakuInfo from "@samehadaku/info/samehadakuInfo";
-import generatePayload from "@helpers/payload";
 import path from "path";
 
 const { baseUrl, baseUrlPath } = samehadakuInfo;
 const parser = new SamehadakuParser(baseUrl, baseUrlPath);
 
 const samehadakuController = {
-  getMainView(req: Request, res: Response, next: NextFunction): void {
+  async getMainView(c: Context): Promise<Response> {
     try {
-      const getViewFile = (filePath: string) => {
-        return path.join(__dirname, "..", "..", "..", "public", "views", filePath);
-      };
+      const filePath = path.join(process.cwd(), "src", "public", "views", "anime-source.html");
+      const file = Bun.file(filePath);
 
-      res.sendFile(getViewFile("anime-source.html"));
+      if (await file.exists()) {
+        return c.html(await file.text());
+      } else {
+        const payload = generateHonoPayload(404, { message: "File not found" });
+        return c.json(payload, 404);
+      }
     } catch (error) {
-      next(error);
+      console.error("Error in getMainView:", error);
+      const payload = generateHonoPayload(500, { message: "Internal server error" });
+      return c.json(payload, 500);
     }
   },
 
-  getMainViewData(req: Request, res: Response, next: NextFunction): void {
+  async getMainViewData(c: Context): Promise<Response> {
     try {
       const data = samehadakuInfo;
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getHome(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getHome(c: Context): Promise<Response> {
     try {
       const data = await parser.parseHome();
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getAllGenres(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getAllGenres(c: Context): Promise<Response> {
     try {
       const data = await parser.parseAllGenres();
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getAllAnimes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getAllAnimes(c: Context): Promise<Response> {
     try {
       const data = await parser.parseAllAnimes();
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getSchedule(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getSchedule(c: Context): Promise<Response> {
     try {
       const data = await parser.parseSchedule();
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getRecentEpisodes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getRecentEpisodes(c: Context): Promise<Response> {
     try {
-      const page = getPageParam(req);
+      const page = getPageParam(c);
       const { data, pagination } = await parser.parseRecentAnime(page);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getOngoingAnimes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getOngoingAnimes(c: Context): Promise<Response> {
     try {
-      const page = getPageParam(req);
-      const order = getOrderParam(req);
+      const page = getPageParam(c);
+      const order = getOrderParam(c);
       const { data, pagination } = await parser.parseOngoingAnimes(page, order);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getCompletedAnimes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getCompletedAnimes(c: Context): Promise<Response> {
     try {
-      const page = getPageParam(req);
-      const order = getOrderParam(req);
+      const page = getPageParam(c);
+      const order = getOrderParam(c);
       const { data, pagination } = await parser.parseCompletedAnimes(page, order);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getPopularAnimes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getPopularAnimes(c: Context): Promise<Response> {
     try {
-      const page = getPageParam(req);
+      const page = getPageParam(c);
       const { data, pagination } = await parser.parsePopularAnimes(page);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getMovies(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getMovies(c: Context): Promise<Response> {
     try {
-      const page = getPageParam(req);
+      const page = getPageParam(c);
       const { data, pagination } = await parser.parseMovies(page);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getBatches(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getBatches(c: Context): Promise<Response> {
     try {
-      const page = getPageParam(req);
+      const page = getPageParam(c);
       const { data, pagination } = await parser.parseBatches(page);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getSearch(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getSearch(c: Context): Promise<Response> {
     try {
-      const q = getQParam(req);
-      const page = getPageParam(req);
+      const q = getQParam(c);
+      const page = getPageParam(c);
       const { data, pagination } = await parser.parseSearch(q, page);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      console.error("Error in getSearch:", error);
+      if (error && typeof error === 'object' && 'status' in error && 'message' in error) {
+        const status = error.status as number;
+        const message = (error.message as string) || "Bad request";
+        const payload = generateHonoPayload(status, { message });
+        return c.json(payload, status as any);
+      }
+      const payload = generateHonoPayload(500, { message: "Internal server error" });
+      return c.json(payload, 500);
     }
   },
 
-  async getGenreAnimes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getGenreAnimes(c: Context): Promise<Response> {
     try {
-      const { genreId } = req.params;
-      const page = getPageParam(req);
+      const genreId = c.req.param("genreId");
+      if (!genreId) {
+        const payload = generateHonoPayload(400, { message: "Genre ID is required" });
+        return c.json(payload, 400);
+      }
+
+      // Check for invalid parameter patterns
+      if (genreId.includes("{") || genreId.includes("}")) {
+        const payload = generateHonoPayload(400, { message: "Invalid genre ID format" });
+        return c.json(payload, 400);
+      }
+
+      const page = getPageParam(c);
       const { data, pagination } = await parser.parseGenreAnimes(genreId, page);
-
-      res.json(generatePayload(res, { data, pagination }));
+      const payload = generateHonoPayload(200, { data, pagination });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      console.error("Error in getGenreAnimes:", error);
+      if (error && typeof error === 'object' && 'status' in error && 'message' in error) {
+        const status = error.status as number;
+        const message = (error.message as string) || "Bad request";
+        const payload = generateHonoPayload(status, { message });
+        return c.json(payload, status as any);
+      }
+
+      // Check if it's a "not found" type error
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error.message as string).toLowerCase();
+        if (errorMessage.includes("not found") || errorMessage.includes("tidak ditemukan") || errorMessage.includes("404")) {
+          const payload = generateHonoPayload(404, { message: "Genre not found" });
+          return c.json(payload, 404);
+        }
+      }
+
+      const payload = generateHonoPayload(500, { message: "Internal server error" });
+      return c.json(payload, 500);
     }
   },
 
-  async getAnimeDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getAnimeDetails(c: Context): Promise<Response> {
     try {
-      const { animeId } = req.params;
+      const animeId = c.req.param("animeId");
+      if (!animeId) {
+        const payload = generateHonoPayload(400, { message: "Anime ID is required" });
+        return c.json(payload, 400);
+      }
+
+      // Check for invalid parameter patterns
+      if (animeId.includes("{") || animeId.includes("}")) {
+        const payload = generateHonoPayload(400, { message: "Invalid anime ID format" });
+        return c.json(payload, 400);
+      }
+
       const data = await parser.parseAnimeDetails(animeId);
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      console.error("Error in getAnimeDetails:", error);
+
+      // Check if it's a "not found" type error
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error.message as string).toLowerCase();
+        if (errorMessage.includes("not found") || errorMessage.includes("tidak ditemukan") || errorMessage.includes("404")) {
+          const payload = generateHonoPayload(404, { message: "Anime not found" });
+          return c.json(payload, 404);
+        }
+      }
+
+      const payload = generateHonoPayload(500, { message: "Internal server error" });
+      return c.json(payload, 500);
     }
   },
 
-  async getAnimeEpisode(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getAnimeEpisode(c: Context): Promise<Response> {
     try {
-      const { episodeId } = req.params;
-      const originUrl = `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
+      const episodeId = c.req.param("episodeId");
+      const originUrl = `${c.req.header("x-forwarded-proto") || "http"}://${c.req.header("host")}`;
       const data = await parser.parseAnimeEpisode(episodeId, originUrl);
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getServerUrl(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getServerUrl(c: Context): Promise<Response> {
     try {
-      const { serverId } = req.params;
-      const originUrl = `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
+      const serverId = c.req.param("serverId");
+      const originUrl = `${c.req.header("x-forwarded-proto") || "http"}://${c.req.header("host")}`;
       const data = await parser.parseServerUrl(serverId, originUrl);
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 
-  async getAnimeBatch(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getAnimeBatch(c: Context): Promise<Response> {
     try {
-      const { batchId } = req.params;
+      const batchId = c.req.param("batchId");
+      if (!batchId) {
+        const payload = generateHonoPayload(400, { message: "Batch ID is required" });
+        return c.json(payload, 400);
+      }
+
+      // Check for invalid parameter patterns
+      if (batchId.includes("{") || batchId.includes("}")) {
+        const payload = generateHonoPayload(400, { message: "Invalid batch ID format" });
+        return c.json(payload, 400);
+      }
+
       const data = await parser.parseAnimeBatch(batchId);
-
-      res.json(generatePayload(res, { data }));
+      const payload = generateHonoPayload(200, { data });
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      console.error("Error in getAnimeBatch:", error);
+
+      // Check if it's a "not found" type error
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error.message as string).toLowerCase();
+        if (errorMessage.includes("not found") || errorMessage.includes("tidak ditemukan") || errorMessage.includes("404")) {
+          const payload = generateHonoPayload(404, { message: "Batch not found" });
+          return c.json(payload, 404);
+        }
+      }
+
+      const payload = generateHonoPayload(500, { message: "Internal server error" });
+      return c.json(payload, 500);
     }
   },
 
-  async getWibuFile(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getWibuFile(c: Context): Promise<Response> {
     try {
-      const url = getUrlParam(req);
+      const url = getUrlParam(c);
       const wibuFile = await parser.parseWibuFile(url);
-
-      res.send(wibuFile);
+      return c.text(wibuFile);
     } catch (error) {
-      next(error);
+      throw error;
     }
   },
 };

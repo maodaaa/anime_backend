@@ -1,11 +1,17 @@
+import { Hono } from "hono";
 import { serverCache } from "@middlewares/cache";
 import mainController from "@controllers/mainController";
-import express from "express";
 
-const mainRoute = express.Router();
+const mainRoute = new Hono();
 
-mainRoute.get("/", mainController.getMainView);
-mainRoute.get("/view-data", serverCache(), mainController.getMainViewData);
-mainRoute.get("*", mainController._404);
+// Main view route - serves the home.html file
+mainRoute.get("/", async (c) => {
+    return await mainController.getMainView(c);
+});
+
+// API endpoint to get main view data with anime sources
+mainRoute.get("/view-data", serverCache(5), async (c) => {
+    return await mainController.getMainViewData(c);
+});
 
 export default mainRoute;

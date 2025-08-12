@@ -1,5 +1,5 @@
-import type { NextFunction, Request, Response } from "express";
-import { setResponseError } from "@helpers/error";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { otakudesuInfo } from "@otakudesu/index";
 import { samehadakuInfo } from "@samehadaku/index";
 import generatePayload from "@helpers/payload";
@@ -7,19 +7,33 @@ import path from "path";
 import fs from "fs";
 
 const mainController = {
-  getMainView(req: Request, res: Response, next: NextFunction): void {
+  async getMainView(c: Context): Promise<Response> {
     try {
       const getViewFile = (filePath: string) => {
         return path.join(__dirname, "..", "public", "views", filePath);
       };
 
-      res.sendFile(getViewFile("home.html"));
+      const filePath = getViewFile("home.html");
+      const file = Bun.file(filePath);
+
+      if (!(await file.exists())) {
+        throw new HTTPException(404, { message: "View file not found" });
+      }
+
+      return new Response(file, {
+        headers: {
+          "Content-Type": "text/html",
+        },
+      });
     } catch (error) {
-      next(error);
+      if (error instanceof HTTPException) {
+        throw error;
+      }
+      throw new HTTPException(500, { message: "Internal server error" });
     }
   },
 
-  getMainViewData(req: Request, res: Response, next: NextFunction): void {
+  async getMainViewData(c: Context): Promise<Response> {
     try {
       function getData() {
         const animeSources = {
@@ -53,14 +67,18 @@ const mainController = {
 
       const data = getData();
 
-      res.json(generatePayload(res, { data }));
+      // Create a mock response object for generatePayload compatibility
+      const mockRes = { statusCode: 200 } as any;
+      const payload = generatePayload(mockRes, { data });
+
+      return c.json(payload);
     } catch (error) {
-      next(error);
+      throw new HTTPException(500, { message: "Internal server error" });
     }
   },
 
-  _404(req: Request, res: Response, next: NextFunction): void {
-    next(setResponseError(404, "halaman tidak ditemukan"));
+  async notFound(c: Context): Promise<Response> {
+    throw new HTTPException(404, { message: "halaman tidak ditemukan" });
   },
 };
 

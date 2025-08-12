@@ -1,0 +1,32 @@
+[install]
+# Configure package manager behavior
+cache = true
+exact = false
+# Optimize for faster installs
+registry = "https://registry.npmjs.org/"
+
+[run]
+# Configure runtime behavior
+bun = true
+# Enable hot reload by default in development
+hot = true
+
+[build]
+# Configure build behavior
+minify = true
+target = "bun"
+
+# Path aliases matching tsconfig.json
+[module]
+"@otakudesu/*" = "./src/anims/otakudesu/*"
+"@samehadaku/*" = "./src/anims/samehadaku/*"
+"@configs/*" = "./src/configs/*"
+"@controllers/*" = "./src/controllers/*"
+"@helpers/*" = "./src/helpers/*"
+"@interfaces/*" = "./src/interfaces/*"
+"@libs/*" = "./src/libs/*"
+"@middlewares/*" = "./src/middlewares/*"
+"@routes/*" = "./src/routes/*"
+"@scrapers/*" = "./src/scrapers/*"
+"@services/*" = "./src/services/*"
+"@schemas/*" = "./src/schemas/*"

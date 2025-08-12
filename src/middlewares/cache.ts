@@ -1,72 +1,68 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Context, Next } from "hono";
 import { type Payload } from "@helpers/payload";
 import { defaultTTL, cache } from "@libs/lruCache";
-import path from "path";
 
 /**
  * @param ttl minutes
  */
 export function serverCache(ttl?: number, responseType: "json" | "text" = "json") {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (c: Context, next: Next) => {
     const newTTL = ttl ? 1000 * 60 * ttl : defaultTTL;
-    const key = path.join(req.originalUrl, "/").replace(/\\/g, "/");
+
+    // Generate cache key from request path and query parameters
+    const url = new URL(c.req.url);
+    const key = url.pathname + (url.search || "");
     const cachedData = cache.get(key);
 
     if (cachedData) {
-      // console.log("hit");
-
+      // Cache hit - return cached data
       if (typeof cachedData === "object") {
-        // console.log("ini object");
-
-        return res.json(cachedData);
+        return c.json(cachedData);
       }
 
       if (typeof cachedData === "string") {
-        // console.log("ini string");
-
-        return res.send(cachedData);
+        return c.text(cachedData);
       }
 
-      // console.log("ini bukan object / string");
-
-      return res.send(String(cachedData));
+      return c.text(String(cachedData));
     }
 
-    // console.log("miss");
+    // Cache miss - continue to next middleware and cache the response
+    await next();
 
-    if (responseType === "json") {
-      const originalJson = res.json.bind(res);
+    // Only cache successful responses
+    if (c.res.status < 399) {
+      const responseClone = c.res.clone();
 
-      res.json = (body: Payload) => {
-        if (res.statusCode < 399 && body.ok) {
-          cache.set(key, body, { ttl: newTTL });
+      if (responseType === "json") {
+        try {
+          const body = await responseClone.json() as Payload;
+          // Only cache if it's a successful payload
+          if (body && typeof body === "object" && body.ok) {
+            cache.set(key, body, { ttl: newTTL });
+          }
+        } catch (error) {
+          // If JSON parsing fails, don't cache
+          console.warn("Failed to parse JSON response for caching:", error);
         }
-
-        return originalJson(body);
-      };
-    } else {
-      const originalSend = res.send.bind(res);
-
-      res.send = (body: any) => {
-        if (res.statusCode < 399) {
+      } else {
+        try {
+          const body = await responseClone.text();
           cache.set(key, body, { ttl: newTTL });
+        } catch (error) {
+          console.warn("Failed to parse text response for caching:", error);
         }
-
-        return originalSend(body);
-      };
+      }
     }
-
-    next();
   };
 }
 
 /**
- * @param maxAge minutes
+ * @param maxAge minutes - Hono version
  */
 export function clientCache(maxAge?: number) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    res.setHeader("Cache-Control", `public, max-age=${maxAge ? maxAge * 60 : 60}`);
-
-    next();
+  return async (c: Context, next: Next) => {
+    await next();
+    c.header("Cache-Control", `public, max-age=${maxAge ? maxAge * 60 : 60}`);
   };
 }
