@@ -4,8 +4,13 @@ import type { Cheerio, CheerioAPI, Element } from "cheerio";
 import type { Pagination } from "@helpers/payload";
 import type { Format, Quality, Url } from "@interfaces/IGlobal";
 import AnimeScraper from "@scrapers/AnimeScraper";
+import { CURRENT_SAMEHADAKU_SELECTOR_VERSION } from "@scrapers/samehadaku/selectors";
 
 export default class SamehadakuParserExtra extends AnimeScraper {
+  constructor(baseUrl: string, baseUrlPath: string) {
+    super(baseUrl, baseUrlPath, "samehadaku", CURRENT_SAMEHADAKU_SELECTOR_VERSION);
+  }
+
   protected parseAnimeCard1(el: Cheerio<Element>, to: "anime" | "batch"): ISPE.AnimeCard1 {
     const data: ISPE.AnimeCard1 = {
       title: "",

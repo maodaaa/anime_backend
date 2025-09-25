@@ -23,6 +23,16 @@ const envSchema = z.object({
     .optional()
     .default("http://v1.samehadaku.how"),
 
+  OTAKUDESU_COOKIES: z
+    .string()
+    .optional()
+    .transform((val) => (val?.trim() ? val.trim() : undefined)),
+
+  SAMEHADAKU_COOKIES: z
+    .string()
+    .optional()
+    .transform((val) => (val?.trim() ? val.trim() : undefined)),
+
   RESPONSE_HREF: z
     .string()
     .optional()
@@ -47,6 +57,10 @@ const configSchema = z.object({
   baseUrl: z.object({
     otakudesu: z.string().url(),
     samehadaku: z.string().url(),
+  }),
+  cookies: z.object({
+    otakudesu: z.string().optional(),
+    samehadaku: z.string().optional(),
   }),
   response: z.object({
     href: z.boolean(),
@@ -92,6 +106,10 @@ const animeConfig = configSchema.parse({
     otakudesu: env.OTAKUDESU_BASE_URL,
     samehadaku: env.SAMEHADAKU_BASE_URL,
   },
+  cookies: {
+    otakudesu: env.OTAKUDESU_COOKIES,
+    samehadaku: env.SAMEHADAKU_COOKIES,
+  },
   response: {
     /* ngebalikin respon href biar gampang nyari ref idnya contoh {"href": "/otakudesu/anime/animeId"} value = false akan mengurangi ukuran response <> up to 30% */
     href: env.RESPONSE_HREF,
@@ -111,6 +129,12 @@ if (animeConfig.NODE_ENV === "development") {
   console.log(`  - PORT: ${animeConfig.PORT}`);
   console.log(`  - Otakudesu URL: ${animeConfig.baseUrl.otakudesu}`);
   console.log(`  - Samehadaku URL: ${animeConfig.baseUrl.samehadaku}`);
+  console.log(
+    `  - Otakudesu cookies: ${animeConfig.cookies.otakudesu ? "[configured]" : "[none]"}`
+  );
+  console.log(
+    `  - Samehadaku cookies: ${animeConfig.cookies.samehadaku ? "[configured]" : "[none]"}`
+  );
   console.log(`  - Response href: ${animeConfig.response.href}`);
   console.log(`  - Response sourceUrl: ${animeConfig.response.sourceUrl}`);
   console.log(`  - Environment: ${animeConfig.NODE_ENV}`);

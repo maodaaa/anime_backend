@@ -3,8 +3,13 @@ import type { CheerioAPI, Cheerio, Element } from "cheerio";
 import type { Pagination } from "@helpers/payload";
 import { getFinalUrl, getFinalUrls } from "@services/dataFetcher";
 import AnimeScraper from "@scrapers/AnimeScraper";
+import { CURRENT_OTAKUDESU_SELECTOR_VERSION } from "@scrapers/otakudesu/selectors";
 
 export default class OtakudesuParserExtra extends AnimeScraper {
+  constructor(baseUrl: string, baseUrlPath: string) {
+    super(baseUrl, baseUrlPath, "otakudesu", CURRENT_OTAKUDESU_SELECTOR_VERSION);
+  }
+
   protected parseAnimeCard1(el: Cheerio<Element>): IOPE.AnimeCard1 {
     const data: IOPE.AnimeCard1 = {
       title: "",
