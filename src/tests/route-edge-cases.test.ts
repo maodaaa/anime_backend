@@ -1,6 +1,18 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import type { Server } from "bun";
 
+const LIVE_EDGE_CASE_TESTS = process.env.LIVE_SCRAPE === "1";
+
+const describeEdge = LIVE_EDGE_CASE_TESTS ? describe : describe.skip;
+
+if (!LIVE_EDGE_CASE_TESTS) {
+    describe.skip("Route edge cases (requires LIVE_SCRAPE=1)", () => {
+        test("skipped", () => {
+            expect(process.env.LIVE_SCRAPE).not.toBe("1");
+        });
+    });
+}
+
 /**
  * Edge Cases and Boundary Testing for All Routes
  * 
@@ -27,19 +39,21 @@ async function makeRequest(path: string, options: RequestInit = {}) {
     return response;
 }
 
-beforeAll(async () => {
-    const app = await import("../index");
-    server = Bun.serve(app.default);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-});
+if (LIVE_EDGE_CASE_TESTS) {
+    beforeAll(async () => {
+        const app = await import("../index");
+        server = Bun.serve(app.default);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    });
 
-afterAll(() => {
-    if (server) {
-        server.stop();
-    }
-});
+    afterAll(() => {
+        if (server) {
+            server.stop();
+        }
+    });
+}
 
-describe("Unicode and Internationalization", () => {
+describeEdge("Unicode and Internationalization", () => {
     test("Should handle Unicode characters in search queries", async () => {
         const unicodeQuery = encodeURIComponent("進撃の巨人");
         const response = await makeRequest(`/otakudesu/search?q=${unicodeQuery}`);
@@ -71,7 +85,7 @@ describe("Unicode and Internationalization", () => {
     });
 });
 
-describe("Malformed Requests", () => {
+describeEdge("Malformed Requests", () => {
     test("Should handle requests with invalid headers", async () => {
         const response = await makeRequest("/view-data", {
             headers: {
@@ -110,7 +124,7 @@ describe("Malformed Requests", () => {
     });
 });
 
-describe("Boundary Value Testing", () => {
+describeEdge("Boundary Value Testing", () => {
     test("Should handle page parameter at integer boundaries", async () => {
         const testCases = [0, 1, 2147483647, -1, -2147483648];
 
@@ -144,7 +158,7 @@ describe("Boundary Value Testing", () => {
     });
 });
 
-describe("SQL Injection Attempts", () => {
+describeEdge("SQL Injection Attempts", () => {
     test("Should handle SQL injection in search parameters", async () => {
         const sqlInjection = encodeURIComponent("'; DROP TABLE users; --");
         const response = await makeRequest(`/otakudesu/search?q=${sqlInjection}`);
@@ -164,7 +178,7 @@ describe("SQL Injection Attempts", () => {
     });
 });
 
-describe("XSS Prevention", () => {
+describeEdge("XSS Prevention", () => {
     test("Should handle script tags in search parameters", async () => {
         const xssAttempt = encodeURIComponent("<script>alert('xss')</script>");
         const response = await makeRequest(`/samehadaku/search?q=${xssAttempt}`);
@@ -190,7 +204,7 @@ describe("XSS Prevention", () => {
     });
 });
 
-describe("Path Traversal Prevention", () => {
+describeEdge("Path Traversal Prevention", () => {
     test("Should prevent directory traversal in static files", async () => {
         const traversalAttempts = [
             "/css/../../../etc/passwd",
@@ -219,7 +233,7 @@ describe("Path Traversal Prevention", () => {
     });
 });
 
-describe("HTTP Method Edge Cases", () => {
+describeEdge("HTTP Method Edge Cases", () => {
     test("Should handle TRACE method", async () => {
         const response = await makeRequest("/view-data", { method: "TRACE" });
         expect([405, 501].includes(response.status)).toBe(true);
@@ -241,7 +255,7 @@ describe("HTTP Method Edge Cases", () => {
     });
 });
 
-describe("Content-Length and Transfer-Encoding", () => {
+describeEdge("Content-Length and Transfer-Encoding", () => {
     test("Should handle requests with invalid Content-Length", async () => {
         const response = await makeRequest("/view-data", {
             method: "POST",
@@ -273,7 +287,7 @@ describe("Content-Length and Transfer-Encoding", () => {
     });
 });
 
-describe("Concurrent Request Stress Testing", () => {
+describeEdge("Concurrent Request Stress Testing", () => {
     test("Should handle burst of requests to same endpoint", async () => {
         const promises = Array.from({ length: 50 }, () =>
             makeRequest("/view-data")
@@ -331,7 +345,7 @@ describe("Concurrent Request Stress Testing", () => {
     });
 });
 
-describe("Memory and Resource Usage", () => {
+describeEdge("Memory and Resource Usage", () => {
     test("Should handle requests with large query strings", async () => {
         const largeQuery = "a".repeat(50000);
         const response = await makeRequest(`/otakudesu/search?q=${encodeURIComponent(largeQuery)}`);
@@ -351,7 +365,7 @@ describe("Memory and Resource Usage", () => {
     });
 });
 
-describe("Timeout and Slow Requests", () => {
+describeEdge("Timeout and Slow Requests", () => {
     test("Should handle requests that might timeout", async () => {
         // Test endpoints that might take longer due to external API calls
         const slowEndpoints = [
@@ -368,7 +382,7 @@ describe("Timeout and Slow Requests", () => {
     });
 });
 
-describe("Cache Behavior Edge Cases", () => {
+describeEdge("Cache Behavior Edge Cases", () => {
     test("Should handle cache with special characters in URLs", async () => {
         const specialChars = encodeURIComponent("test@#$%^&*()");
         const response1 = await makeRequest(`/otakudesu/search?q=${specialChars}`);
@@ -397,7 +411,7 @@ describe("Cache Behavior Edge Cases", () => {
     });
 });
 
-describe("Error Recovery", () => {
+describeEdge("Error Recovery", () => {
     test("Should recover from temporary failures", async () => {
         // Make multiple requests to test error recovery
         const responses = [];

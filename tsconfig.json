@@ -54,6 +54,9 @@
       ],
       "@schemas/*": [
         "schemas/*"
+      ],
+      "@http/*": [
+        "http/*"
       ]
     }
   },

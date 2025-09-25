@@ -14,7 +14,7 @@ MOHON IZIN ABANG SUMBER, sumber bisa bertambah, req/dm rekomendasi situs yang ba
 
 # Installasi App
 
-- NodeJS >= 20.x
+- Bun >= 1.1 (disarankan) atau NodeJS >= 20.x
 - Jalankan perintah di terminal
 
 ```sh
@@ -25,10 +25,10 @@ git clone https://github.com/wajik45/wajik-anime-api.git
 cd wajik-anime-api
 
 # install dependensi
-npm install
+bun install
 
 # menjalankan server mode development
-npm run dev
+bun run dev
 ```
 
 # Build App
@@ -41,8 +41,29 @@ npm run build
 npm start
 ```
 
-- Server akan berjalan di http://localhost:3001
+- Server akan berjalan di http://localhost:3001 (default dari `animeConfig`)
 - Untuk menghapus sumber ada di "src/anims/{sumber yang ingin dihapus}" kemudian hapus baris kode sumber yang sudah tidak diperlukan di "src/index.ts" dan "src/controllers/mainController.ts"
+
+## Testing & Fixtures
+
+- Tes offline menggunakan fixture dijalankan dengan:
+
+```sh
+bun test
+```
+
+- Untuk memperbarui fixture, aktifkan scraping live dan jalankan skrip:
+
+```sh
+LIVE_SCRAPE=1 bun run scripts/update-fixtures.ts
+```
+
+- Tes live yang menembak sumber asli **akan dilewati** kecuali `LIVE_SCRAPE=1` di-set.
+
+## Endpoint Health Check
+
+- `/health/scrape` menampilkan status semua sumber dan timestamp sukses terakhir.
+- `/health/scrape/otakudesu` dan `/health/scrape/samehadaku` memberi detail per sumber.
 
 # Routes
 

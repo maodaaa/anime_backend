@@ -4,9 +4,13 @@ import type { Quality, Server, Url } from "@interfaces/IGlobal";
 import { wajikFetch } from "@services/dataFetcher";
 import { cache } from "@libs/lruCache";
 import OtakudesuParserExtra from "./OtakudesuParserExtra";
+import { CURRENT_OTAKUDESU_SELECTOR_VERSION, OTAKUDESU_SELECTORS } from "@scrapers/otakudesu/selectors";
+
+const SELECTORS = OTAKUDESU_SELECTORS[CURRENT_OTAKUDESU_SELECTOR_VERSION];
+type ScrapeOptions = { html?: string };
 
 export default class OtakudesuParser extends OtakudesuParserExtra {
-  parseHome(): Promise<IOP.Home> {
+  parseHome(options?: ScrapeOptions): Promise<IOP.Home> {
     return this.scrape<IOP.Home>(
       {
         path: "/",
@@ -14,12 +18,13 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
           ongoing: { href: "", otakudesuUrl: "", animeList: [] },
           completed: { href: "", otakudesuUrl: "", animeList: [] },
         },
+        html: options?.html,
       },
       async ($, data) => {
         data.ongoing.href = this.generateHref("ongoing");
         data.completed.href = this.generateHref("completed");
 
-        const linkElements = $(".rapi > a").toArray();
+        const linkElements = $(SELECTORS.home.navigationLinks).toArray();
 
         linkElements.forEach((linkElement, index) => {
           const listType = index === 0 ? "ongoing" : index === 1 ? "completed" : "error";
@@ -34,10 +39,10 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
           }
         });
 
-        const homeElements = $(".venz").toArray();
+        const homeElements = $(SELECTORS.home.sections).toArray();
 
         homeElements.forEach((homeElement, index) => {
-          const animeElements = $(homeElement).find("ul li .detpost").toArray();
+          const animeElements = $(homeElement).find(SELECTORS.home.card).toArray();
 
           animeElements.forEach((animeElement) => {
             const listType = index === 0 ? "ongoing" : index === 1 ? "completed" : "error";
@@ -59,26 +64,27 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
         const isEmpty =
           data.ongoing.animeList.length === 0 && data.completed.animeList.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.home.card });
 
         return data;
       }
     );
   }
 
-  parseSchedule(): Promise<IOP.Schedule> {
+  parseSchedule(options?: ScrapeOptions): Promise<IOP.Schedule> {
     return this.scrape<IOP.Schedule>(
       {
         path: "/jadwal-rilis",
         initialData: { days: [] },
+        html: options?.html,
       },
       async ($, data) => {
-        const scheduleElements = $(".kglist321").toArray();
+        const scheduleElements = $(SELECTORS.schedule.container).toArray();
 
         scheduleElements.forEach((scheduleElement) => {
           const animeList: IOPE.AnimeLinkCard[] = [];
-          const day = $(scheduleElement).find("h2").text();
-          const animeElements = $(scheduleElement).find("ul li a").toArray();
+          const day = $(scheduleElement).find(SELECTORS.schedule.header).text();
+          const animeElements = $(scheduleElement).find(SELECTORS.schedule.item).toArray();
 
           animeElements.forEach((animeElement) => {
             const card = this.parseLinkCard($(animeElement), "anime");
@@ -96,26 +102,27 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
 
         const isEmpty = data.days.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.schedule.container });
 
         return data;
       }
     );
   }
 
-  parseAllAnimes(): Promise<IOP.AllAnimes> {
+  parseAllAnimes(options?: ScrapeOptions): Promise<IOP.AllAnimes> {
     return this.scrape<IOP.AllAnimes>(
       {
         path: "/anime-list",
         initialData: { list: [] },
+        html: options?.html,
       },
       async ($, data) => {
-        const listElements = $(".bariskelom").toArray();
+        const listElements = $(SELECTORS.animeList.group).toArray();
 
         listElements.forEach((listElement) => {
           const animeList: IOPE.AnimeLinkCard[] = [];
-          const startWith = $(listElement).find(".barispenz a").text();
-          const animeElements = $(listElement).find(".jdlbar a").toArray();
+          const startWith = $(listElement).find(SELECTORS.animeList.header).text();
+          const animeElements = $(listElement).find(SELECTORS.animeList.item).toArray();
 
           animeElements.forEach((animeElement) => {
             const card = this.parseLinkCard($(animeElement), "anime");
@@ -133,18 +140,19 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
 
         const isEmpty = data.list.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.animeList.group });
 
         return data;
       }
     );
   }
 
-  parseAllGenres(): Promise<IOP.AllGenres> {
+  parseAllGenres(options?: ScrapeOptions): Promise<IOP.AllGenres> {
     return this.scrape<IOP.AllGenres>(
       {
         path: "/genre-list",
         initialData: { genreList: [] },
+        html: options?.html,
       },
       async ($, data) => {
         const genreElements = $(".genres li a").toArray();
@@ -169,14 +177,15 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
     );
   }
 
-  parseOngoingAnimes(page: number): Promise<IOP.OngoingAnimes> {
+  parseOngoingAnimes(page: number, options?: ScrapeOptions): Promise<IOP.OngoingAnimes> {
     return this.scrape<IOP.OngoingAnimes>(
       {
         path: `/ongoing-anime/page/${page}`,
         initialData: { data: { animeList: [] } },
+        html: options?.html,
       },
       async ($, { data, pagination }) => {
-        const animeElements = $(".venutama ul li").toArray();
+        const animeElements = $(SELECTORS.ongoing.cards).toArray();
 
         animeElements.forEach((animeElement) => {
           const card = this.parseAnimeCard2($(animeElement));
@@ -188,21 +197,22 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
 
         const isEmpty = data.animeList.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.ongoing.cards });
 
         return { data, pagination };
       }
     );
   }
 
-  parseCompletedAnimes(page: number): Promise<IOP.CompletedAnimes> {
+  parseCompletedAnimes(page: number, options?: ScrapeOptions): Promise<IOP.CompletedAnimes> {
     return this.scrape<IOP.CompletedAnimes>(
       {
         path: `/complete-anime/page/${page}`,
         initialData: { data: { animeList: [] } },
+        html: options?.html,
       },
       async ($, { data, pagination }) => {
-        const animeElements = $(".venutama ul li").toArray();
+        const animeElements = $(SELECTORS.completed.cards).toArray();
 
         animeElements.forEach((animeElement) => {
           const card = this.parseAnimeCard1($(animeElement));
@@ -214,21 +224,22 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
 
         const isEmpty = data.animeList.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.completed.cards });
 
         return { data, pagination };
       }
     );
   }
 
-  parseSearch(q: string): Promise<IOP.Search> {
+  parseSearch(q: string, options?: ScrapeOptions): Promise<IOP.Search> {
     return this.scrape<IOP.Search>(
       {
         path: `?s=${q}&post_type=anime`,
         initialData: { animeList: [] },
+        html: options?.html,
       },
       async ($, data) => {
-        const animeElements = $("ul.chivsrc li").toArray();
+        const animeElements = $(SELECTORS.search.results).toArray();
 
         animeElements.forEach((animeElement) => {
           const card = this.parseAnimeCard3($, $(animeElement));
@@ -238,12 +249,14 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
 
         const isEmpty = data.animeList.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.search.results, status: 404 });
 
         return data;
       }
     );
   }
+
+  /* c8 ignore start */
 
   parseGenreAnimes(genreId: string, page: number): Promise<IOP.GenreAnimes> {
     return this.scrape<IOP.GenreAnimes>(
@@ -730,3 +743,5 @@ export default class OtakudesuParser extends OtakudesuParserExtra {
     );
   }
 }
+
+/* c8 ignore end */

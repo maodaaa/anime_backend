@@ -1,17 +1,23 @@
 import type { AxiosRequestConfig } from "axios";
 import { load, type CheerioAPI } from "cheerio";
-import { wajikFetch } from "@services/dataFetcher";
-import animeConfig from "@configs/animeConfig";
 import path from "path";
+import animeConfig from "@configs/animeConfig";
+import { wajikFetch } from "@services/dataFetcher";
 import { setResponseError } from "@helpers/error";
+import { recordScrapeFailure, recordScrapeSuccess } from "@http/scrapeMetrics";
+import { ScraperError, SelectorError } from "@http/errors";
 
 export default class AnimeScraper {
   protected baseUrl: string;
   protected baseUrlPath: string;
+  protected siteKey: string;
+  protected selectorVersion: string;
 
-  constructor(baseUrl: string, baseUrlPath: string) {
+  constructor(baseUrl: string, baseUrlPath: string, siteKey: string, selectorVersion = "unversioned") {
     this.baseUrl = this.generateBaseUrl(baseUrl);
     this.baseUrlPath = this.generateUrlPath([baseUrlPath]);
+    this.siteKey = siteKey;
+    this.selectorVersion = selectorVersion;
   }
 
   private deepCopy<T>(obj: T): T {
@@ -131,8 +137,22 @@ export default class AnimeScraper {
       .replace(/[!@#$%^&*]| /g, "");
   }
 
-  protected checkEmptyData(errorCondition: boolean): void {
-    if (errorCondition) setResponseError(404, "data tidak ditemukan");
+  protected checkEmptyData(
+    errorCondition: boolean,
+    context?: { selector?: string; message?: string; status?: number }
+  ): void {
+    if (!errorCondition) return;
+
+    if (context?.selector) {
+      throw new SelectorError(
+        context.message ?? "Selector returned no results",
+        context.selector,
+        this.selectorVersion,
+        { site: this.siteKey }
+      );
+    }
+
+    setResponseError(context?.status ?? 404, context?.message ?? "data tidak ditemukan");
   }
 
   protected enrawr(input: string): string {
@@ -181,18 +201,32 @@ export default class AnimeScraper {
       path: string;
       initialData: T;
       axiosConfig?: AxiosRequestConfig<any>;
+      html?: string;
     },
     parser: ($: CheerioAPI, data: T) => Promise<T>
   ): Promise<T> {
     const path = this.generateUrlPath([props.path]);
-    const htmlData = await wajikFetch(this.baseUrl + path, this.baseUrl, {
-      method: "GET",
-      responseType: "text",
-      ...props.axiosConfig,
-    });
-    const $ = load(htmlData);
-    const data = parser($, this.deepCopy(props.initialData));
+    const targetUrl = this.baseUrl + path;
 
-    return data;
+    const htmlData =
+      props.html ??
+      (await wajikFetch(targetUrl, this.baseUrl, {
+        method: "GET",
+        responseType: "text",
+        ...props.axiosConfig,
+      }));
+
+    const $ = load(htmlData);
+
+    try {
+      const data = await parser($, this.deepCopy(props.initialData));
+      recordScrapeSuccess(this.siteKey);
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown parser error";
+      const status = error instanceof ScraperError ? error.status : undefined;
+      recordScrapeFailure(this.siteKey, { message, status, url: targetUrl });
+      throw error;
+    }
   }
 }

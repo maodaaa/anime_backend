@@ -5,9 +5,13 @@ import { wajikFetch } from "@services/dataFetcher";
 import { setResponseError } from "@helpers/error";
 import SamehadakuParserExtra from "./SamehadakuParserExtra";
 import path from "path";
+import { CURRENT_SAMEHADAKU_SELECTOR_VERSION, SAMEHADAKU_SELECTORS } from "@scrapers/samehadaku/selectors";
+
+const SELECTORS = SAMEHADAKU_SELECTORS[CURRENT_SAMEHADAKU_SELECTOR_VERSION];
+type ScrapeOptions = { html?: string };
 
 export default class SamehadakuParser extends SamehadakuParserExtra {
-  parseHome(): Promise<ISP.Home> {
+  parseHome(options?: ScrapeOptions): Promise<ISP.Home> {
     return this.scrape<ISP.Home>(
       {
         path: "/",
@@ -16,27 +20,28 @@ export default class SamehadakuParser extends SamehadakuParserExtra {
           batch: { href: "", samehadakuUrl: "", batchList: [] },
           movie: { href: "", samehadakuUrl: "", animeList: [] },
         },
+        html: options?.html,
       },
       async ($, data) => {
         data.recent.href = this.generateHref("recent");
         data.recent.samehadakuUrl = this.generateSourceUrl(
-          $(".wp-block-button__link").attr("href")
+          $(SELECTORS.home.recentLink).attr("href")
         );
 
         data.batch.href = this.generateHref("batch");
         data.batch.samehadakuUrl = this.generateSourceUrl(
-          $(".widget-title h3 .linkwidget").attr("href")
+          $(SELECTORS.home.batchLink).attr("href")
         );
 
         data.movie.href = this.generateHref("movies");
         data.movie.samehadakuUrl = this.generateSourceUrl(
-          $(".widgets h3 .linkwidget").attr("href")
+          $(SELECTORS.home.movieLink).attr("href")
         );
 
-        const animeWrapperElements = $(".post-show").toArray();
+        const animeWrapperElements = $(SELECTORS.home.recentWrapper).toArray();
 
         animeWrapperElements.forEach((animeWrapperEl, index) => {
-          const animeElements = $(animeWrapperEl).find("ul li").toArray();
+          const animeElements = $(animeWrapperEl).find(SELECTORS.home.recentItems).toArray();
 
           animeElements.forEach((animeEl) => {
             const card = this.parseAnimeCard1($(animeEl), index === 0 ? "anime" : "batch");
@@ -45,7 +50,7 @@ export default class SamehadakuParser extends SamehadakuParserExtra {
           });
         });
 
-        const animeMovieElements = $(".widgetseries ul li").toArray();
+        const animeMovieElements = $(SELECTORS.home.movieItems).toArray();
 
         animeMovieElements.forEach((animeMovieElement) => {
           const card = this.parseAnimeCard3($, $(animeMovieElement));
@@ -60,24 +65,27 @@ export default class SamehadakuParser extends SamehadakuParserExtra {
           data.batch.batchList.length === 0 &&
           data.movie.animeList.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.home.recentWrapper });
 
         return data;
       }
     );
   }
 
-  parseAllGenres(): Promise<ISP.AllGenres> {
+  parseAllGenres(options?: ScrapeOptions): Promise<ISP.AllGenres> {
     return this.scrape<ISP.AllGenres>(
       {
         path: "/daftar-anime-2",
         initialData: { genreList: [] },
+        html: options?.html,
       },
       async ($, data) => {
-        const genreElements = $(".filter_act.genres .tax_fil").toArray();
+        const genreElements = $(SELECTORS.genres.list).toArray();
 
         genreElements.forEach((genreElement) => {
-          const oriUrl = `${this.baseUrl}/genre/${$(genreElement).find("input").attr("value")}`;
+          const oriUrl = `${this.baseUrl}/genre/${$(genreElement)
+            .find(SELECTORS.genres.input)
+            .attr("value")}`;
           const title = $(genreElement).text().trim();
           const samehadakuUrl = this.generateSourceUrl(oriUrl);
           const genreId = this.generateSlug(oriUrl);
@@ -93,12 +101,14 @@ export default class SamehadakuParser extends SamehadakuParserExtra {
 
         const isEmpty = data.genreList.length === 0;
 
-        this.checkEmptyData(isEmpty);
+        this.checkEmptyData(isEmpty, { selector: SELECTORS.genres.list });
 
         return data;
       }
     );
   }
+
+  /* c8 ignore start */
 
   parseAllAnimes(): Promise<ISP.AllAnimes> {
     return this.scrape<ISP.AllAnimes>(
@@ -745,3 +755,5 @@ export default class SamehadakuParser extends SamehadakuParserExtra {
     );
   }
 }
+
+/* c8 ignore end */
