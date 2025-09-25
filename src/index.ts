@@ -7,6 +7,7 @@ import { staticFileMiddleware } from "@middlewares/staticFiles";
 import { otakudesuInfo, otakudesuRoute } from "@otakudesu/index";
 import { samehadakuInfo, samehadakuRoute } from "@samehadaku/index";
 import mainRoute from "@routes/mainRoute";
+import healthRoute from "@routes/healthRoute";
 import animeConfig from "@configs/animeConfig";
 import generatePayload from "@helpers/payload";
 
@@ -30,6 +31,7 @@ app.use("*", async (c, next) => {
 // RUTE SUMBER - Process API routes first
 app.route(otakudesuInfo.baseUrlPath, otakudesuRoute);
 app.route(samehadakuInfo.baseUrlPath, samehadakuRoute);
+app.route("/health", healthRoute);
 
 // RUTE UTAMA
 app.route("/", mainRoute);

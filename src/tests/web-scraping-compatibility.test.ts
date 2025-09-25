@@ -30,7 +30,7 @@ const mockHtmlContent = `
 // Test implementation of AnimeScraper for testing
 class TestAnimeScraper extends AnimeScraper {
     constructor() {
-        super('https://test.example.com', '/test');
+        super('https://test.example.com', '/test', 'test', 'test');
     }
 
     // Expose protected methods for testing
