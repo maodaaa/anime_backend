@@ -1,0 +1,17 @@
+services:
+  wajik-anime-api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: wajik-anime-api-dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - BUN_ENV=development
+    volumes:
+      - ./src:/usr/src/app/src
+      - ./package.json:/usr/src/app/package.json
+      - ./bunfig.toml:/usr/src/app/bunfig.toml
+    command: ["bun", "--hot", "src/index.ts"]

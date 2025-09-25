@@ -21,7 +21,7 @@ const envSchema = z.object({
     .string()
     .url()
     .optional()
-    .default("https://samehadaku.now"),
+    .default("http://v1.samehadaku.how/"),
 
   RESPONSE_HREF: z
     .string()
