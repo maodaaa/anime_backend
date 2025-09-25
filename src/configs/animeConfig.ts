@@ -15,13 +15,13 @@ const envSchema = z.object({
     .string()
     .url()
     .optional()
-    .default("https://otakudesu.cloud"),
+    .default("https://otakudesu.best"),
 
   SAMEHADAKU_BASE_URL: z
     .string()
     .url()
     .optional()
-    .default("http://v1.samehadaku.how/"),
+    .default("http://v1.samehadaku.how"),
 
   RESPONSE_HREF: z
     .string()
